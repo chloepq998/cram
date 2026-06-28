@@ -3,14 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isAllowedMimeType, MAX_FILE_SIZE_BYTES } from "@/lib/study-material";
 import { SummaryMarkdown } from "@/components/SummaryMarkdown";
+import { QuizPanel } from "@/components/QuizPanel";
+import { addSession } from "@/lib/storage";
 
 type Status = "idle" | "summarizing" | "done" | "error";
 
 export function StudyMaterialWorkspace() {
   const [file, setFile] = useState<File | null>(null);
+  const [subject, setSubject] = useState("");
   const [summary, setSummary] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const previewUrl = useMemo(
@@ -28,6 +32,7 @@ export function StudyMaterialWorkspace() {
     setSummary(null);
     setErrorMessage(null);
     setStatus("idle");
+    setSessionId(null);
 
     if (!selected) {
       setFile(null);
@@ -64,6 +69,15 @@ export function StudyMaterialWorkspace() {
         throw new Error(data.error ?? "요약을 생성하지 못했습니다.");
       }
 
+      const newSessionId = crypto.randomUUID();
+      addSession({
+        id: newSessionId,
+        subject: subject.trim() || "기타",
+        fileName: file.name,
+        summary: data.summary,
+        createdAt: new Date().toISOString(),
+      });
+      setSessionId(newSessionId);
       setSummary(data.summary);
       setStatus("done");
     } catch (error) {
@@ -108,6 +122,13 @@ export function StudyMaterialWorkspace() {
           <span className="text-sm text-zinc-500">
             {file ? file.name : "PDF, JPG, PNG 파일 (최대 20MB)"}
           </span>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="과목 (예: 수학)"
+            className="w-32 rounded border border-zinc-300 px-2 py-1 text-sm"
+          />
           <button
             type="button"
             onClick={handleSummarize}
@@ -164,6 +185,14 @@ export function StudyMaterialWorkspace() {
             </div>
           </section>
         </div>
+      )}
+
+      {status === "done" && summary && sessionId && (
+        <QuizPanel
+          sessionId={sessionId}
+          subject={subject.trim() || "기타"}
+          summary={summary}
+        />
       )}
     </div>
   );
