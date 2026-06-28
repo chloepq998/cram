@@ -45,8 +45,11 @@ export function QuizPanel({
       if (!response.ok) {
         throw new Error(data.error ?? "퀴즈를 생성하지 못했습니다.");
       }
-      setQuestions(data.questions);
-      setUserAnswers(new Array(data.questions.length).fill(""));
+      const generated: QuizQuestion[] = data.questions.map(
+        (q: Omit<QuizQuestion, "id">) => ({ ...q, id: crypto.randomUUID() }),
+      );
+      setQuestions(generated);
+      setUserAnswers(new Array(generated.length).fill(""));
       setPhase("answering");
     } catch (error) {
       setErrorMessage(
